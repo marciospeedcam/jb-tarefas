@@ -1,5 +1,5 @@
 // JB Tarefas - service worker: guarda a tela do app para abrir rápido e mostra os avisos
-const CACHE = 'jbt-v1';
+const CACHE = 'jbt-v2';
 const ARQS = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'favicon-32.png'];
 
 self.addEventListener('install', e => {

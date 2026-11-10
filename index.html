@@ -109,6 +109,7 @@
     <div class="top">
       <img src="icon-192.png" alt="">
       <h1><span id="hGrupo">Tarefas</span><small id="hMe"></small></h1>
+      <button class="icobtn" id="btShareApp" aria-label="Compartilhar app">📤</button>
       <button class="icobtn" id="btMenu" aria-label="Opções">⚙︎</button>
     </div>
     <nav id="tabs"></nav>
@@ -422,6 +423,23 @@ auth.onAuthStateChanged(u=>{
   if(u){ if(!me){ me=u.uid; iniciar(); } return; }
   auth.signInAnonymously().catch(()=>setStatus('Sem conexão. Confira a internet e abra de novo.', true));
 });
+})();
+</script>
+<script>
+(function(){
+  var URL_APP="https://marciospeedcam.github.io/jb-tarefas/";
+  function aviso(m){ try{ var s=document.getElementById('status'); s.textContent=m; s.classList.remove('hidden'); setTimeout(function(){s.classList.add('hidden')},2500); }catch(e){} }
+  function copiar(t){
+    if(navigator.clipboard&&navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(function(){return true},function(){return fallback(t)});
+    return Promise.resolve(fallback(t));
+  }
+  function fallback(t){ try{ var ta=document.createElement("textarea"); ta.value=t; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,999); var ok=document.execCommand("copy"); ta.remove(); return ok; }catch(e){ return false; } }
+  var b=document.getElementById("btShareApp"); if(!b) return;
+  b.addEventListener("click",function(){
+    var data={title:"JB Tarefas",text:"App de tarefas da JB. Abra no Safari e toque em Compartilhar > Adicionar à Tela de Início:",url:URL_APP};
+    if(navigator.share){ navigator.share(data).catch(function(e){ if(!e||e.name!=="AbortError") copiar(URL_APP).then(function(ok){aviso(ok?"Link copiado: cole no WhatsApp":URL_APP)}); }); return; }
+    copiar(URL_APP).then(function(ok){aviso(ok?"Link copiado: cole no WhatsApp":URL_APP)});
+  });
 })();
 </script>
 </body>
