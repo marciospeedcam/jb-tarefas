@@ -407,9 +407,9 @@ function iniciar(){
   let timer=setTimeout(()=>setStatus('Os dados ainda não chegaram. Confira a internet.', true),12000);
   function pronto(){ if(loadedG && loadedM && loadedT){ clearTimeout(timer); setStatus(''); } }
   function falha(){ clearTimeout(timer); setStatus('Conexão perdida. Feche e abra o app de novo.', true); }
-  db.doc('config/grupo').onSnapshot(s=>{ grupo=s.exists?s.data():null; if(!s.metadata.fromCache||grupo) loadedG=true; pronto(); render(); }, falha);
-  db.collection('membros').onSnapshot(s=>{ membros=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(m=>typeof m.nome==='string'); if(!s.metadata.fromCache||membros.some(m=>m.id===me)) loadedM=true; pronto(); render(); }, falha);
-  db.collection('tarefas').orderBy('criadoEm','desc').onSnapshot(s=>{
+  db.doc('config/grupo').onSnapshot({includeMetadataChanges:true},s=>{ grupo=s.exists?s.data():null; if(!s.metadata.fromCache||grupo) loadedG=true; pronto(); render(); }, falha);
+  db.collection('membros').onSnapshot({includeMetadataChanges:true},s=>{ membros=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(m=>typeof m.nome==='string'); if(!s.metadata.fromCache||membros.some(m=>m.id===me)) loadedM=true; pronto(); render(); }, falha);
+  db.collection('tarefas').orderBy('criadoEm','desc').onSnapshot({includeMetadataChanges:true},s=>{
     tarefas=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(t=>typeof t.texto==='string');
     checarNovidades(s.docChanges());
     if(!s.metadata.fromCache){ loadedT=true; if(primeiraCarga){ primeiraCarga=false; } }
