@@ -155,7 +155,6 @@ function mostrar(id){ ['telaCarregando','telaGrupo','telaNome','telaApp'].forEac
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-try{ db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
 
 let me=null, grupo=null, membros=[], tarefas=[], aba='paramim', modalKind=null;
 let loadedG=false, loadedM=false, loadedT=false, primeiraCarga=true;
@@ -166,7 +165,26 @@ function meuNome(){ return nomeDe(me); }
 
 // ---------- Service worker / instalação / avisos ----------
 let swReg=null;
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').then(r=>{ swReg=r; }).catch(()=>{}); }
+// Versão nova do app: busca sem cache e recarrega sozinho quando chegar atualização
+if('serviceWorker' in navigator){
+  const tinhaControle=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{ swReg=r; r.update().catch(()=>{}); }).catch(()=>{});
+  let recarregou=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(tinhaControle && !recarregou && !modalKind){ recarregou=true; location.reload(); } });
+}
+// Ao voltar para o app depois de um tempo, recarrega tudo (dados e versão); se estiver escrevendo algo, só reconecta
+let escondidoEm=0;
+function voltou(){
+  if(document.hidden) return;
+  if(swReg) swReg.update().catch(()=>{});
+  const longe = escondidoEm && Date.now()-escondidoEm>15000; escondidoEm=0;
+  if(longe && !modalKind){ location.reload(); return; }
+  try{ db.disableNetwork().then(()=>db.enableNetwork()).catch(()=>{}); }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) escondidoEm=Date.now(); else voltou(); });
+window.addEventListener('pageshow',ev=>{ if(ev.persisted) location.reload(); });
+window.addEventListener('focus',voltou);
+window.addEventListener('online',()=>{ try{ db.enableNetwork().catch(()=>{}); }catch(e){} });
 const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
 const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 let promptInstalar=null;
