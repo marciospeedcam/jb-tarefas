@@ -1,12 +1,16 @@
 // JB Tarefas - service worker: sempre busca a versão nova na internet; usa a cópia só se estiver sem sinal
-const CACHE = 'jbt-v4';
+const CACHE = 'jbt-v5';
 const ARQS = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'favicon-32.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  // Ao ativar a versão nova, apaga as cópias velhas e recarrega toda tela aberta com a versão antiga
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    .then(() => self.clients.claim())
+    .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+    .then(cs => Promise.all(cs.map(c => c.navigate(c.url).catch(() => {})))));
 });
 self.addEventListener('fetch', e => {
   const req = e.request;
