@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JB Tarefas</title>
+<meta name="theme-color" content="#0e0e0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="JB Tarefas">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-32.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--bg:#0e0e0e;--card:#1a1a1a;--card2:#232323;--gold:#d4af37;--gold2:#f0d77a;--txt:#f2f2f2;--mut:#a0a0a0;--red:#ff6b5e;--ok:#5fd38d;--line:#2e2e2e}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+  body{padding:env(safe-area-inset-top) 0 calc(90px + env(safe-area-inset-bottom))}
+  .hidden{display:none!important}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 16px 0}
+  .top{display:flex;align-items:center;gap:10px}
+  .top img{width:40px;height:40px;border-radius:9px}
+  .top h1{font-size:18px;margin:0;color:var(--gold);flex:1;line-height:1.15}
+  .top h1 small{display:block;color:var(--mut);font-size:13px;font-weight:400}
+  .icobtn{background:none;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:8px 10px;font-size:15px;cursor:pointer}
+  nav{display:flex;gap:6px;overflow-x:auto;padding:12px 0;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .tab{flex:none;background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer}
+  .tab.on{background:var(--gold);color:#111;border-color:var(--gold);font-weight:600}
+  .tab .n{display:inline-block;margin-left:6px;background:var(--red);color:#fff;border-radius:999px;padding:0 7px;font-size:12px;font-weight:700}
+  .tab.on .n{background:#111;color:var(--gold)}
+  main{padding:12px 16px;max-width:720px;margin:0 auto}
+  .card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+  .card.atrasada{border-color:#5a2a26}
+  .card.feita{opacity:.75}
+  .check{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid var(--gold);background:transparent;color:var(--gold);font-size:20px;cursor:pointer}
+  .check.done{background:var(--ok);border-color:var(--ok);color:#111;cursor:default}
+  .check.wait{border-color:var(--line);color:var(--mut);cursor:default;font-size:18px}
+  .corpo{flex:1;min-width:0}
+  .txt{font-size:16px;white-space:pre-wrap;word-wrap:break-word}
+  .card.feita .txt{text-decoration:line-through;color:var(--mut)}
+  .meta{color:var(--mut);font-size:13px;margin-top:6px}
+  .meta b{color:var(--txt);font-weight:600}
+  .tag{display:inline-block;margin-top:8px;font-size:12px;border-radius:8px;padding:3px 8px;background:var(--card2);color:var(--mut)}
+  .tag.late{background:#3a1d1a;color:var(--red)}
+  .tag.ok{background:#173323;color:var(--ok)}
+  .obs{margin-top:6px;font-size:13px;color:var(--gold2)}
+  .del{background:none;border:none;color:var(--mut);font-size:13px;text-decoration:underline;cursor:pointer;padding:0;margin-top:8px;margin-left:8px}
+  .vazio{text-align:center;color:var(--mut);padding:50px 10px}
+  .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));background:var(--gold);color:#111;border:none;border-radius:999px;padding:16px 28px;font-size:17px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.5);cursor:pointer;z-index:6}
+  .alerta{background:#2b1a0e;border:1px solid #6b4a14;color:#ffd590;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px}
+  .alerta ul{margin:6px 0 8px;padding-left:18px}
+  .aviso{background:var(--card);border:1px dashed var(--gold);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px;color:var(--mut)}
+  .aviso b{color:var(--gold)}
+  .btn{display:block;width:100%;background:var(--gold);color:#111;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer}
+  .btn.sec{background:var(--card2);color:var(--txt);border:1px solid var(--line);font-weight:500}
+  .btn.peq{display:inline-block;width:auto;padding:8px 14px;font-size:14px}
+  .btn:disabled{opacity:.5}
+  input,textarea,select{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:13px;font:inherit;margin:6px 0 14px}
+  textarea{min-height:110px;resize:vertical}
+  label{font-size:14px;color:var(--mut)}
+  .tela{max-width:420px;margin:40px auto;padding:0 20px;text-align:center}
+  .tela img{width:120px;height:120px;border-radius:24px;margin-bottom:16px}
+  .tela h2{color:var(--gold);margin:0 0 6px}
+  .tela p{color:var(--mut);margin:0 0 18px}
+  .tela input{text-align:center;font-size:18px}
+  .fundo{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+  .modal{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+  .modal h3{margin:0 0 12px;color:var(--gold)}
+  .linha{display:flex;gap:10px;margin-top:4px}
+  .linha .btn{flex:1}
+  .status{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#3a1d1a;color:#ffb3aa;border-radius:10px;padding:8px 14px;font-size:14px;z-index:30;max-width:92vw;text-align:center}
+  .passos{text-align:left;color:var(--txt);font-size:15px;background:var(--card2);border-radius:12px;padding:12px 14px 12px 34px;margin:0 0 14px}
+  .passos li{margin:4px 0}
+  @media (min-width:700px){.fundo{align-items:center}.modal{border-radius:20px}}
+</style>
+</head>
+<body>
+<div id="status" class="status hidden"></div>
+
+<!-- Carregando -->
+<div id="telaCarregando" class="tela">
+  <img src="icon-512.png" alt="">
+  <p>Carregando…</p>
+</div>
+
+<!-- Nome do grupo (só na primeira vez de todas) -->
+<div id="telaGrupo" class="tela hidden">
+  <img src="icon-512.png" alt="">
+  <h2>Bem-vindo!</h2>
+  <p>Qual é o nome do grupo ou da empresa?</p>
+  <input id="inGrupo" maxlength="60" placeholder="Ex.: Grupo JB" autocomplete="off">
+  <button class="btn" id="btGrupo">Continuar</button>
+</div>
+
+<!-- Nome da pessoa (uma vez em cada celular) -->
+<div id="telaNome" class="tela hidden">
+  <img src="icon-512.png" alt="">
+  <h2 id="nomeGrupoTela">Tarefas</h2>
+  <p>Digite o seu nome. É assim que as outras pessoas vão te ver.</p>
+  <input id="inNome" maxlength="40" placeholder="Seu nome" autocomplete="off">
+  <button class="btn" id="btNome">Entrar</button>
+</div>
+
+<!-- App -->
+<div id="telaApp" class="hidden">
+  <header>
+    <div class="top">
+      <img src="icon-192.png" alt="">
+      <h1><span id="hGrupo">Tarefas</span><small id="hMe"></small></h1>
+      <button class="icobtn" id="btMenu" aria-label="Opções">⚙︎</button>
+    </div>
+    <nav id="tabs"></nav>
+  </header>
+  <main>
+    <div id="instalar" class="aviso hidden"></div>
+    <div id="ativarAvisos" class="aviso hidden">
+      <b>Avisos de tarefa</b><br>Ative para receber aviso quando chegar tarefa para você e lembrete a cada 24h.
+      <div style="margin-top:8px"><button class="btn peq" id="btAvisos">Ativar avisos</button></div>
+    </div>
+    <div id="alerta" class="alerta hidden"></div>
+    <div id="lista"></div>
+  </main>
+  <button class="fab" id="btNova">+ Nova tarefa</button>
+</div>
+
+<div id="modal" class="fundo hidden"><div class="modal" id="modalBox"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+'use strict';
+const firebaseConfig = {
+  apiKey: "AIzaSyCFJ2ZbGgsY1tfsNdUFQOgLc-rk6drAGOs",
+  authDomain: "jb-tarefas.firebaseapp.com",
+  projectId: "jb-tarefas",
+  storageBucket: "jb-tarefas.firebasestorage.app",
+  messagingSenderId: "1071783646429",
+  appId: "1:1071783646429:web:27e6d0eab0230c5ed33734"
+};
+const DIA = 24*60*60*1000;
+const $ = id => document.getElementById(id);
+function el(tag, cls, txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function fmt(ms){ if(!ms) return '—'; const d=new Date(ms); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function tempo(ms){ const h=Math.floor(ms/3600000); if(h<1) return 'menos de 1h'; if(h<48) return h+'h'; return Math.floor(h/24)+' dias'; }
+function setStatus(msg, erro){ const s=$('status'); if(!msg){ s.classList.add('hidden'); return; } s.textContent=msg; s.classList.remove('hidden'); if(!erro) setTimeout(()=>s.classList.add('hidden'),2500); }
+function mostrar(id){ ['telaCarregando','telaGrupo','telaNome','telaApp'].forEach(t=>$(t).classList.toggle('hidden', t!==id)); }
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+try{ db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
+
+let me=null, grupo=null, membros=[], tarefas=[], aba='paramim', modalKind=null;
+let loadedG=false, loadedM=false, loadedT=false, primeiraCarga=true;
+const vistos = new Set();
+
+function nomeDe(id){ const m=membros.find(x=>x.id===id); return m?m.nome:''; }
+function meuNome(){ return nomeDe(me); }
+
+// ---------- Service worker / instalação / avisos ----------
+let swReg=null;
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').then(r=>{ swReg=r; }).catch(()=>{}); }
+const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+let promptInstalar=null;
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); promptInstalar=e; renderInstalar(); });
+
+function renderInstalar(){
+  const box=$('instalar');
+  if(standalone || lsGet('jbt_inst_ok')){ box.classList.add('hidden'); return; }
+  box.replaceChildren();
+  box.append(el('b',null,'Instale o app no celular'), el('br'));
+  if(promptInstalar){
+    box.append(document.createTextNode('Toque no botão para colocar o JB Tarefas na tela inicial.'));
+    const b=el('button','btn peq','Instalar app'); b.style.marginTop='8px';
+    b.onclick=async()=>{ promptInstalar.prompt(); try{ await promptInstalar.userChoice; }catch(e){} promptInstalar=null; renderInstalar(); };
+    const d=el('div'); d.append(b); box.append(d);
+  } else if(ios){
+    box.append(document.createTextNode('No Safari: toque em Compartilhar (quadrado com seta ↑) e depois em "Adicionar à Tela de Início".'));
+  } else {
+    box.append(document.createTextNode('No Chrome: toque nos 3 pontinhos ⋮ e depois em "Instalar app" ou "Adicionar à tela inicial".'));
+  }
+  const x=el('button','del','Já instalei'); x.onclick=()=>{ lsSet('jbt_inst_ok','1'); renderInstalar(); };
+  box.append(el('br'), x);
+  box.classList.remove('hidden');
+}
+
+function podeAvisar(){ return ('Notification' in window) && Notification.permission==='granted'; }
+function renderAtivarAvisos(){
+  const show = ('Notification' in window) && Notification.permission==='default' && (standalone || !ios);
+  $('ativarAvisos').classList.toggle('hidden', !show);
+}
+$('btAvisos').onclick=async()=>{ try{ await Notification.requestPermission(); }catch(e){} renderAtivarAvisos(); if(podeAvisar()) notificar('Avisos ativados','Você vai ser avisado das suas tarefas.'); };
+
+async function notificar(titulo, corpo, tag){
+  if(!podeAvisar()) return;
+  const op={body:corpo, icon:'icon-192.png', badge:'icon-192.png', tag:tag||undefined};
+  try{
+    const r = swReg || (navigator.serviceWorker && await navigator.serviceWorker.ready);
+    if(r && r.showNotification){ await r.showNotification(titulo, op); return; }
+  }catch(e){}
+  try{ new Notification(titulo, op); }catch(e){}
+}
+
+// ---------- Telas iniciais ----------
+$('btGrupo').onclick=async()=>{
+  const n=$('inGrupo').value.trim(); if(!n){ $('inGrupo').focus(); return; }
+  $('btGrupo').disabled=true;
+  try{ await db.doc('config/grupo').set({nome:n, criadoEm:Date.now(), criadoPor:me}); }
+  catch(e){ setStatus('Não deu para salvar. Confira a internet.', true); }
+  $('btGrupo').disabled=false;
+};
+$('inGrupo').addEventListener('keydown',e=>{ if(e.key==='Enter') $('btGrupo').click(); });
+
+$('btNome').onclick=async()=>{
+  const n=$('inNome').value.trim(); if(!n){ $('inNome').focus(); return; }
+  $('btNome').disabled=true;
+  try{ await db.doc('membros/'+me).set({nome:n, desde:Date.now()}); lsSet('jbt_nome',n); }
+  catch(e){ setStatus('Não deu para salvar. Confira a internet.', true); }
+  $('btNome').disabled=false;
+};
+$('inNome').addEventListener('keydown',e=>{ if(e.key==='Enter') $('btNome').click(); });
+
+// ---------- Modais ----------
+function abrirModal(kind, montar){ modalKind=kind; const box=$('modalBox'); box.replaceChildren(); montar(box); $('modal').classList.remove('hidden'); }
+function fecharModal(){ modalKind=null; $('modal').classList.add('hidden'); render(); }
+$('modal').addEventListener('click',e=>{ if(e.target===$('modal')) fecharModal(); });
+
+$('btNova').onclick=()=>abrirModal('nova', box=>{
+  box.append(el('h3',null,'Nova tarefa'));
+  box.append(el('label',null,'O que precisa ser feito?'));
+  const ta=el('textarea'); ta.maxLength=1000; ta.placeholder='Descreva a tarefa'; box.append(ta);
+  box.append(el('label',null,'Para quem?'));
+  const sel=el('select');
+  const ord=[...membros].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  sel.append(new Option('Escolha a pessoa',''));
+  ord.forEach(m=>sel.append(new Option(m.id===me? m.nome+' (eu)': m.nome, m.id)));
+  box.append(sel);
+  if(membros.length<2){ const p=el('p','meta','Só aparecem aqui as pessoas que já abriram o app e digitaram o nome. Mande o link para elas!'); p.style.marginTop='-6px'; box.append(p); }
+  const linha=el('div','linha');
+  const c=el('button','btn sec','Cancelar'); c.onclick=fecharModal;
+  const ok=el('button','btn','Enviar tarefa');
+  ok.onclick=async()=>{
+    const texto=ta.value.trim(), para=sel.value;
+    if(!texto){ ta.focus(); return; } if(!para){ sel.focus(); return; }
+    ok.disabled=true;
+    try{
+      await db.collection('tarefas').add({texto, deId:me, deNome:meuNome(), paraId:para, paraNome:nomeDe(para), criadoEm:Date.now(), status:'pendente'});
+      aba = para===me ? 'paramim' : 'enviadas';
+      fecharModal(); setStatus('Tarefa enviada ✓');
+    }catch(e){ ok.disabled=false; setStatus('Não deu para enviar. Confira a internet.', true); }
+  };
+  linha.append(c,ok); box.append(linha);
+  setTimeout(()=>ta.focus(),50);
+});
+
+function modalResolver(t){
+  abrirModal('resolver', box=>{
+    box.append(el('h3',null,'Marcar como resolvida?'));
+    const p=el('p','txt',t.texto); p.style.margin='0 0 12px'; box.append(p);
+    box.append(el('label',null,'Observação (opcional)'));
+    const ob=el('input'); ob.maxLength=300; ob.placeholder='Ex.: feito, troquei a peça'; box.append(ob);
+    const linha=el('div','linha');
+    const c=el('button','btn sec','Voltar'); c.onclick=fecharModal;
+    const ok=el('button','btn','✓ Resolvida');
+    ok.onclick=async()=>{
+      ok.disabled=true;
+      const upd={status:'feita', feitaEm:Date.now(), feitaPorNome:meuNome()};
+      if(ob.value.trim()) upd.obs=ob.value.trim();
+      try{ await db.doc('tarefas/'+t.id).update(upd); fecharModal(); setStatus('Tarefa resolvida ✓'); }
+      catch(e){ ok.disabled=false; setStatus('Não deu para salvar. Confira a internet.', true); }
+    };
+    linha.append(c,ok); box.append(linha);
+  });
+}
+
+function modalApagar(t){
+  abrirModal('apagar', box=>{
+    box.append(el('h3',null,'Apagar esta tarefa?'));
+    const p=el('p','txt',t.texto); p.style.margin='0 0 16px'; box.append(p);
+    const linha=el('div','linha');
+    const c=el('button','btn sec','Voltar'); c.onclick=fecharModal;
+    const ok=el('button','btn','Apagar'); ok.style.background='var(--red)';
+    ok.onclick=async()=>{ ok.disabled=true; try{ await db.doc('tarefas/'+t.id).delete(); fecharModal(); setStatus('Tarefa apagada'); }catch(e){ ok.disabled=false; setStatus('Não deu para apagar.', true); } };
+    linha.append(c,ok); box.append(linha);
+  });
+}
+
+$('btMenu').onclick=()=>abrirModal('menu', box=>{
+  box.append(el('h3',null,'Opções'));
+  box.append(el('label',null,'Seu nome'));
+  const n=el('input'); n.maxLength=40; n.value=meuNome(); box.append(n);
+  const salvar=el('button','btn','Salvar nome');
+  salvar.onclick=async()=>{ const v=n.value.trim(); if(!v) return; salvar.disabled=true; try{ await db.doc('membros/'+me).set({nome:v},{merge:true}); lsSet('jbt_nome',v); fecharModal(); setStatus('Nome salvo ✓'); }catch(e){ salvar.disabled=false; setStatus('Não deu para salvar.', true); } };
+  box.append(salvar);
+  const pg=el('p','meta','Grupo: '+(grupo?grupo.nome:'')+' · '+membros.length+' pessoa(s) no app'); pg.style.marginTop='14px'; box.append(pg);
+  const lista=el('p','meta',[...membros].map(m=>m.nome).sort((a,b)=>a.localeCompare(b,'pt-BR')).join(', ')); box.append(lista);
+  const f=el('button','btn sec','Fechar'); f.style.marginTop='10px'; f.onclick=fecharModal; box.append(f);
+});
+
+// ---------- Lembrete de 24h ----------
+function pendentesVelhas(){
+  const agora=Date.now();
+  return tarefas.filter(t=>t.status!=='feita' && (t.paraId===me || t.deId===me) && agora-t.criadoEm>=DIA);
+}
+function renderAlerta(){
+  const box=$('alerta'); box.replaceChildren();
+  const agora=Date.now();
+  const lista=pendentesVelhas().filter(t=>{ const v=+(lsGet('jbt_aviso_'+t.id)||0); return agora-v>=DIA; });
+  if(!lista.length){ box.classList.add('hidden'); return; }
+  box.append(el('b',null, lista.length===1?'⚠ 1 tarefa pendente há mais de 24h':'⚠ '+lista.length+' tarefas pendentes há mais de 24h'));
+  const ul=el('ul');
+  lista.forEach(t=>{ const li=el('li'); li.append(el('b',null,t.texto.length>70?t.texto.slice(0,70)+'…':t.texto), document.createTextNode(' — para '+(t.paraId===me?'você':(nomeDe(t.paraId)||t.paraNome))+', pendente há '+tempo(agora-t.criadoEm))); ul.append(li); });
+  const ok=el('button','btn sec peq','Ok, entendi');
+  ok.onclick=()=>{ const n=Date.now(); lista.forEach(t=>lsSet('jbt_aviso_'+t.id,String(n))); renderAlerta(); };
+  box.append(ul,ok); box.classList.remove('hidden');
+}
+function lembrete24h(){
+  if(!podeAvisar()) return;
+  const agora=Date.now(); const ult=+(lsGet('jbt_lemb')||0);
+  if(agora-ult<DIA) return;
+  const v=pendentesVelhas(); if(!v.length) return;
+  lsSet('jbt_lemb',String(agora));
+  const minhas=v.filter(t=>t.paraId===me).length;
+  notificar('JB Tarefas: tarefas pendentes', minhas? 'Você tem '+minhas+' tarefa(s) pendente(s) há mais de 24h.' : v.length+' tarefa(s) que você pediu ainda estão pendentes.', 'lembrete');
+}
+
+// ---------- Lista ----------
+function filtro(k){
+  if(k==='paramim') return tarefas.filter(t=>t.status!=='feita' && t.paraId===me);
+  if(k==='enviadas') return tarefas.filter(t=>t.status!=='feita' && t.deId===me);
+  if(k==='todas') return tarefas.filter(t=>t.status!=='feita');
+  return tarefas.filter(t=>t.status==='feita').sort((a,b)=>(b.feitaEm||0)-(a.feitaEm||0));
+}
+const ABAS=[['paramim','Para mim'],['enviadas','Que eu pedi'],['todas','Todas pendentes'],['feitas','Resolvidas']];
+function renderTabs(){
+  const nav=$('tabs'); nav.replaceChildren();
+  ABAS.forEach(([k,label])=>{
+    const b=el('button','tab'+(aba===k?' on':''),label);
+    if(k!=='feitas'){ const n=filtro(k).length; if(n) b.append(el('span','n',String(n))); }
+    b.onclick=()=>{ aba=k; render(); window.scrollTo(0,0); };
+    nav.append(b);
+  });
+  try{ const n=filtro('paramim').length; if(navigator.setAppBadge){ n?navigator.setAppBadge(n):navigator.clearAppBadge(); } }catch(e){}
+}
+function card(t){
+  const feita=t.status==='feita'; const idade=Date.now()-t.criadoEm;
+  const c=el('div','card'+(feita?' feita':'')+(!feita&&idade>=DIA?' atrasada':''));
+  let chk;
+  if(feita){ chk=el('button','check done','✓'); }
+  else if(t.paraId===me){ chk=el('button','check','✓'); chk.setAttribute('aria-label','Marcar como resolvida'); chk.title='Marcar como resolvida'; chk.onclick=()=>modalResolver(t); }
+  else { chk=el('button','check wait','⏳'); chk.title='Aguardando '+(nomeDe(t.paraId)||t.paraNome); }
+  const b=el('div','corpo');
+  b.append(el('div','txt',t.texto));
+  const m=el('div','meta');
+  const de=nomeDe(t.deId)||t.deNome||'—', para=nomeDe(t.paraId)||t.paraNome||'—';
+  m.append(document.createTextNode('De '), el('b',null,t.deId===me?'você':de), document.createTextNode(' para '), el('b',null,t.paraId===me?'você':para));
+  m.append(el('br'), document.createTextNode('Pedido em '+fmt(t.criadoEm)));
+  b.append(m);
+  if(feita){ b.append(el('span','tag ok','✓ Resolvida em '+fmt(t.feitaEm)+(t.feitaPorNome?' por '+t.feitaPorNome:''))); if(t.obs) b.append(el('div','obs','Obs.: '+t.obs)); }
+  else b.append(idade>=DIA ? el('span','tag late','Pendente há '+tempo(idade)) : el('span','tag','Pendente há '+tempo(idade)));
+  if(t.deId===me){ const d=el('button','del','apagar'); d.onclick=()=>modalApagar(t); b.append(d); }
+  c.append(chk,b); return c;
+}
+function renderLista(){
+  const box=$('lista'); box.replaceChildren();
+  const l=filtro(aba);
+  if(!l.length){
+    const msg={paramim:'Nenhuma tarefa pendente para você. 🎉',enviadas:'Nenhuma tarefa sua esperando outra pessoa.',todas:'Nenhuma tarefa pendente no grupo.',feitas:'Nenhuma tarefa resolvida ainda.'}[aba];
+    box.append(el('div','vazio',msg)); return;
+  }
+  l.forEach(t=>box.append(card(t)));
+}
+
+function render(){
+  if(!loadedG) return;
+  if(!grupo){ mostrar('telaGrupo'); return; }
+  document.title = grupo.nome+' · Tarefas';
+  if(!loadedM) return;
+  if(!membros.some(m=>m.id===me)){ $('nomeGrupoTela').textContent=grupo.nome; const g=lsGet('jbt_nome'); if(g && !$('inNome').value) $('inNome').value=g; mostrar('telaNome'); return; }
+  mostrar('telaApp');
+  $('hGrupo').textContent=grupo.nome; $('hMe').textContent='Olá, '+meuNome();
+  if(modalKind) return;
+  renderInstalar(); renderAtivarAvisos(); renderTabs(); renderAlerta(); renderLista();
+}
+
+// Avisa quando chega tarefa nova para mim ou quando resolvem uma que eu pedi
+function checarNovidades(docs){
+  docs.forEach(ch=>{
+    const t=Object.assign({id:ch.doc.id}, ch.doc.data());
+    const chave=t.id+':'+t.status;
+    if(vistos.has(chave)) return; vistos.add(chave);
+    if(primeiraCarga) return;
+    if(ch.type==='added' && t.paraId===me && t.deId!==me && t.status!=='feita') notificar('Nova tarefa de '+(nomeDe(t.deId)||t.deNome||''), t.texto, 'n'+t.id);
+    if(ch.type==='modified' && t.status==='feita' && t.deId===me && t.paraId!==me) notificar('Tarefa resolvida por '+(t.feitaPorNome||nomeDe(t.paraId)||''), t.texto, 'f'+t.id);
+  });
+}
+
+function iniciar(){
+  let timer=setTimeout(()=>setStatus('Os dados ainda não chegaram. Confira a internet.', true),12000);
+  function pronto(){ if(loadedG && loadedM && loadedT){ clearTimeout(timer); setStatus(''); } }
+  function falha(){ clearTimeout(timer); setStatus('Conexão perdida. Feche e abra o app de novo.', true); }
+  db.doc('config/grupo').onSnapshot(s=>{ grupo=s.exists?s.data():null; if(!s.metadata.fromCache||grupo) loadedG=true; pronto(); render(); }, falha);
+  db.collection('membros').onSnapshot(s=>{ membros=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(m=>typeof m.nome==='string'); if(!s.metadata.fromCache||membros.some(m=>m.id===me)) loadedM=true; pronto(); render(); }, falha);
+  db.collection('tarefas').orderBy('criadoEm','desc').onSnapshot(s=>{
+    tarefas=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(t=>typeof t.texto==='string');
+    checarNovidades(s.docChanges());
+    if(!s.metadata.fromCache){ loadedT=true; if(primeiraCarga){ primeiraCarga=false; } }
+    pronto(); render(); lembrete24h();
+  }, falha);
+  setInterval(()=>{ if(!modalKind) render(); lembrete24h(); }, 5*60000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ if(!modalKind) render(); lembrete24h(); } });
+}
+
+auth.onAuthStateChanged(u=>{
+  if(u){ if(!me){ me=u.uid; iniciar(); } return; }
+  auth.signInAnonymously().catch(()=>setStatus('Sem conexão. Confira a internet e abra de novo.', true));
+});
+})();
+</script>
+</body>
+</html>
