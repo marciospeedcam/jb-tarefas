@@ -47,6 +47,15 @@
   .tag.ok{background:#173323;color:var(--ok)}
   .obs{margin-top:6px;font-size:13px;color:var(--gold2)}
   .del{background:none;border:none;color:var(--mut);font-size:13px;text-decoration:underline;cursor:pointer;padding:0;margin-top:8px;margin-left:8px}
+  .pessoas{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:4px 12px;margin:6px 0 14px}
+  .pessoas label{display:flex;align-items:center;gap:12px;padding:10px 0;font-size:16px;color:var(--txt);border-bottom:1px solid var(--line)}
+  .pessoas label:last-child{border-bottom:none}
+  .pessoas input{width:22px;height:22px;margin:0;accent-color:var(--gold);flex:none}
+  .andam{margin-top:8px;font-size:14px;background:#1d2633;border-left:3px solid #6aa7ff;border-radius:8px;padding:8px 10px;color:#cfe2ff;white-space:pre-wrap;word-wrap:break-word}
+  .andam small{display:block;color:var(--mut);font-size:12px;margin-top:3px}
+  .tag.and{background:#1d2633;color:#8fbcff}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+  .chip{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:999px;padding:7px 12px;font-size:14px;cursor:pointer}
   .vazio{text-align:center;color:var(--mut);padding:50px 10px}
   .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));background:var(--gold);color:#111;border:none;border-radius:999px;padding:16px 28px;font-size:17px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.5);cursor:pointer;z-index:6}
   .alerta{background:#2b1a0e;border:1px solid #6b4a14;color:#ffd590;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:14px}
@@ -158,10 +167,30 @@ const db = firebase.firestore();
 
 let me=null, grupo=null, membros=[], tarefas=[], aba='paramim', modalKind=null;
 let loadedG=false, loadedM=false, loadedT=false, primeiraCarga=true;
-const vistos = new Set();
+const vistos = new Set(); const papeis = {};
 
 function nomeDe(id){ const m=membros.find(x=>x.id===id); return m?m.nome:''; }
 function meuNome(){ return nomeDe(me); }
+function ver(t){ return Array.isArray(t.verIds)? t.verIds : []; }
+function acompanho(t){ return ver(t).includes(me) && t.paraId!==me && t.deId!==me; }
+function nomesLista(ids){ const l=ids.map(i=>i===me?'você':nomeDe(i)).filter(Boolean); if(l.length<2) return l.join(''); return l.slice(0,-1).join(', ')+' e '+l[l.length-1]; }
+function campoPessoas(box, marcados){
+  box.append(el('label',null,'Quem pode acompanhar? (só vê, não marca como feita)'));
+  const div=el('div','pessoas');
+  [...membros].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).forEach(m=>{
+    const lb=el('label'); const cb=el('input'); cb.type='checkbox'; cb.value=m.id; cb.checked=marcados.includes(m.id);
+    lb.append(cb, document.createTextNode(m.id===me? m.nome+' (eu)': m.nome)); div.append(lb);
+  });
+  box.append(div);
+  return ()=>[...div.querySelectorAll('input:checked')].map(i=>i.value);
+}
+function campoQuem(box, atual){
+  box.append(el('label',null,'Quem vai fazer?'));
+  const sel=el('select');
+  sel.append(new Option('Escolha a pessoa',''));
+  [...membros].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).forEach(m=>sel.append(new Option(m.id===me? m.nome+' (eu)': m.nome, m.id)));
+  sel.value=atual||''; box.append(sel); return sel;
+}
 
 // ---------- Service worker / instalação / avisos ----------
 let swReg=null;
@@ -255,12 +284,8 @@ $('btNova').onclick=()=>abrirModal('nova', box=>{
   box.append(el('h3',null,'Nova tarefa'));
   box.append(el('label',null,'O que precisa ser feito?'));
   const ta=el('textarea'); ta.maxLength=1000; ta.placeholder='Descreva a tarefa'; box.append(ta);
-  box.append(el('label',null,'Para quem?'));
-  const sel=el('select');
-  const ord=[...membros].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
-  sel.append(new Option('Escolha a pessoa',''));
-  ord.forEach(m=>sel.append(new Option(m.id===me? m.nome+' (eu)': m.nome, m.id)));
-  box.append(sel);
+  const sel=campoQuem(box, me);
+  const pegarVer=campoPessoas(box, []);
   if(membros.length<2){ const p=el('p','meta','Só aparecem aqui as pessoas que já abriram o app e digitaram o nome. Mande o link para elas!'); p.style.marginTop='-6px'; box.append(p); }
   const linha=el('div','linha');
   const c=el('button','btn sec','Cancelar'); c.onclick=fecharModal;
@@ -270,7 +295,8 @@ $('btNova').onclick=()=>abrirModal('nova', box=>{
     if(!texto){ ta.focus(); return; } if(!para){ sel.focus(); return; }
     ok.disabled=true;
     try{
-      await db.collection('tarefas').add({texto, deId:me, deNome:meuNome(), paraId:para, paraNome:nomeDe(para), criadoEm:Date.now(), status:'pendente'});
+      const verIds=pegarVer().filter(i=>i!==para);
+      await db.collection('tarefas').add({texto, deId:me, deNome:meuNome(), paraId:para, paraNome:nomeDe(para), verIds, criadoEm:Date.now(), status:'pendente'});
       aba = para===me ? 'paramim' : 'enviadas';
       fecharModal(); setStatus('Tarefa enviada ✓');
     }catch(e){ ok.disabled=false; setStatus('Não deu para enviar. Confira a internet.', true); }
@@ -290,7 +316,7 @@ function modalResolver(t){
     const ok=el('button','btn','✓ Resolvida');
     ok.onclick=async()=>{
       ok.disabled=true;
-      const upd={status:'feita', feitaEm:Date.now(), feitaPorNome:meuNome()};
+      const upd={status:'feita', feitaEm:Date.now(), feitaPorNome:meuNome(), feitaPorId:me};
       if(ob.value.trim()) upd.obs=ob.value.trim();
       try{ await db.doc('tarefas/'+t.id).update(upd); fecharModal(); setStatus('Tarefa resolvida ✓'); }
       catch(e){ ok.disabled=false; setStatus('Não deu para salvar. Confira a internet.', true); }
@@ -306,7 +332,56 @@ function modalApagar(t){
     const linha=el('div','linha');
     const c=el('button','btn sec','Voltar'); c.onclick=fecharModal;
     const ok=el('button','btn','Apagar'); ok.style.background='var(--red)';
-    ok.onclick=async()=>{ ok.disabled=true; try{ await db.doc('tarefas/'+t.id).delete(); fecharModal(); setStatus('Tarefa apagada'); }catch(e){ ok.disabled=false; setStatus('Não deu para apagar.', true); } };
+    ok.onclick=()=>{
+      tarefas=tarefas.filter(x=>x.id!==t.id); fecharModal(); setStatus('Tarefa apagada');
+      db.doc('tarefas/'+t.id).delete().catch(e=>
+        db.doc('tarefas/'+t.id).update({status:'apagada', apagadaEm:Date.now()})
+          .catch(e2=>setStatus('Não deu para apagar ('+((e2&&e2.code)||(e&&e.code)||'erro')+')', true)));
+    };
+    linha.append(c,ok); box.append(linha);
+  });
+}
+
+function modalAndamento(t){
+  abrirModal('andamento', box=>{
+    box.append(el('h3',null,'Atualizar andamento'));
+    const p=el('p','txt',t.texto); p.style.margin='0 0 12px'; box.append(p);
+    box.append(el('label',null,'O que está acontecendo?'));
+    const chips=el('div','chips');
+    const ta=el('textarea'); ta.maxLength=500; ta.placeholder='Ex.: liguei, aguardando retorno do fornecedor'; ta.value=t.andamento||''; ta.style.minHeight='90px';
+    ['Em andamento','Aguardando resposta','Aguardando fornecedor','Aguardando pagamento'].forEach(x=>{ const c=el('button','chip',x); c.onclick=()=>{ ta.value=x+(ta.value&&!ta.value.startsWith('Aguardando')&&ta.value!=='Em andamento'?' — '+ta.value:''); ta.focus(); }; chips.append(c); });
+    box.append(chips, ta);
+    const linha=el('div','linha');
+    const c=el('button','btn sec','Cancelar'); c.onclick=fecharModal;
+    const ok=el('button','btn','Salvar');
+    ok.onclick=()=>{
+      const v=ta.value.trim();
+      const upd={andamento:v, andamentoEm:Date.now(), andamentoPor:meuNome(), andamentoPorId:me};
+      Object.assign(t, upd); fecharModal(); setStatus('Andamento salvo ✓');
+      db.doc('tarefas/'+t.id).update(upd).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
+    };
+    linha.append(c,ok); box.append(linha);
+    setTimeout(()=>ta.focus(),50);
+  });
+}
+
+function modalEditar(t){
+  abrirModal('editar', box=>{
+    box.append(el('h3',null,'Editar tarefa'));
+    box.append(el('label',null,'Texto'));
+    const ta=el('textarea'); ta.maxLength=1000; ta.value=t.texto; box.append(ta);
+    const sel=campoQuem(box, t.paraId);
+    const pegarVer=campoPessoas(box, ver(t));
+    const linha=el('div','linha');
+    const c=el('button','btn sec','Cancelar'); c.onclick=fecharModal;
+    const ok=el('button','btn','Salvar');
+    ok.onclick=()=>{
+      const texto=ta.value.trim(), para=sel.value;
+      if(!texto){ ta.focus(); return; } if(!para){ sel.focus(); return; }
+      const upd={texto, paraId:para, paraNome:nomeDe(para), verIds:pegarVer().filter(i=>i!==para), editadoEm:Date.now()};
+      Object.assign(t, upd); fecharModal(); setStatus('Tarefa salva ✓');
+      db.doc('tarefas/'+t.id).update(upd).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
+    };
     linha.append(c,ok); box.append(linha);
   });
 }
@@ -326,7 +401,7 @@ $('btMenu').onclick=()=>abrirModal('menu', box=>{
 // ---------- Lembrete de 24h ----------
 function pendentesVelhas(){
   const agora=Date.now();
-  return tarefas.filter(t=>t.status!=='feita' && (t.paraId===me || t.deId===me) && agora-t.criadoEm>=DIA);
+  return tarefas.filter(t=>t.status==='pendente' && (t.paraId===me || t.deId===me) && agora-t.criadoEm>=DIA);
 }
 function renderAlerta(){
   const box=$('alerta'); box.replaceChildren();
@@ -352,17 +427,18 @@ function lembrete24h(){
 
 // ---------- Lista ----------
 function filtro(k){
-  if(k==='paramim') return tarefas.filter(t=>t.status!=='feita' && t.paraId===me);
-  if(k==='enviadas') return tarefas.filter(t=>t.status!=='feita' && t.deId===me);
-  if(k==='todas') return tarefas.filter(t=>t.status!=='feita');
+  if(k==='paramim') return tarefas.filter(t=>t.status==='pendente' && t.paraId===me);
+  if(k==='enviadas') return tarefas.filter(t=>t.status==='pendente' && t.deId===me && t.paraId!==me);
+  if(k==='acomp') return tarefas.filter(t=>acompanho(t));
+  if(k==='todas') return tarefas.filter(t=>t.status==='pendente');
   return tarefas.filter(t=>t.status==='feita').sort((a,b)=>(b.feitaEm||0)-(a.feitaEm||0));
 }
-const ABAS=[['paramim','Para mim'],['enviadas','Que eu pedi'],['todas','Todas pendentes'],['feitas','Resolvidas']];
+const ABAS=[['paramim','Para mim'],['enviadas','Que eu pedi'],['acomp','Acompanho'],['todas','Todas pendentes'],['feitas','Resolvidas']];
 function renderTabs(){
   const nav=$('tabs'); nav.replaceChildren();
   ABAS.forEach(([k,label])=>{
     const b=el('button','tab'+(aba===k?' on':''),label);
-    if(k!=='feitas'){ const n=filtro(k).length; if(n) b.append(el('span','n',String(n))); }
+    if(k!=='feitas'){ const n=(k==='acomp'?filtro(k).filter(t=>t.status==='pendente'):filtro(k)).length; if(n) b.append(el('span','n',String(n))); }
     b.onclick=()=>{ aba=k; render(); window.scrollTo(0,0); };
     nav.append(b);
   });
@@ -381,17 +457,25 @@ function card(t){
   const de=nomeDe(t.deId)||t.deNome||'—', para=nomeDe(t.paraId)||t.paraNome||'—';
   m.append(document.createTextNode('De '), el('b',null,t.deId===me?'você':de), document.createTextNode(' para '), el('b',null,t.paraId===me?'você':para));
   m.append(el('br'), document.createTextNode('Pedido em '+fmt(t.criadoEm)));
+  if(ver(t).length){ m.append(el('br'), document.createTextNode('👁 Acompanha: '+nomesLista(ver(t)))); }
   b.append(m);
   if(feita){ b.append(el('span','tag ok','✓ Resolvida em '+fmt(t.feitaEm)+(t.feitaPorNome?' por '+t.feitaPorNome:''))); if(t.obs) b.append(el('div','obs','Obs.: '+t.obs)); }
-  else b.append(idade>=DIA ? el('span','tag late','Pendente há '+tempo(idade)) : el('span','tag','Pendente há '+tempo(idade)));
-  if(t.deId===me){ const d=el('button','del','apagar'); d.onclick=()=>modalApagar(t); b.append(d); }
+  else {
+    if(t.andamento){ const a=el('div','andam','📝 '+t.andamento); a.append(el('small',null,'Atualizado por '+(t.andamentoPor||'—')+' em '+fmt(t.andamentoEm))); b.append(a); }
+    b.append(t.andamento ? el('span','tag and','Em andamento · aberta há '+tempo(idade)) : (idade>=DIA ? el('span','tag late','Pendente há '+tempo(idade)) : el('span','tag','Pendente há '+tempo(idade))));
+  }
+  if(!feita && (t.paraId===me || t.deId===me)){ const s=el('button','del','andamento'); s.onclick=()=>modalAndamento(t); b.append(s); }
+  if(t.deId===me){
+    if(!feita){ const e=el('button','del','editar'); e.onclick=()=>modalEditar(t); b.append(e); }
+    const d=el('button','del','apagar'); d.onclick=()=>modalApagar(t); b.append(d);
+  }
   c.append(chk,b); return c;
 }
 function renderLista(){
   const box=$('lista'); box.replaceChildren();
   const l=filtro(aba);
   if(!l.length){
-    const msg={paramim:'Nenhuma tarefa pendente para você. 🎉',enviadas:'Nenhuma tarefa sua esperando outra pessoa.',todas:'Nenhuma tarefa pendente no grupo.',feitas:'Nenhuma tarefa resolvida ainda.'}[aba];
+    const msg={paramim:'Nenhuma tarefa pendente para você. 🎉',enviadas:'Nenhuma tarefa sua esperando outra pessoa.',acomp:'Nenhuma tarefa para você acompanhar.',todas:'Nenhuma tarefa pendente no grupo.',feitas:'Nenhuma tarefa resolvida ainda.'}[aba];
     box.append(el('div','vazio',msg)); return;
   }
   l.forEach(t=>box.append(card(t)));
@@ -413,11 +497,15 @@ function render(){
 function checarNovidades(docs){
   docs.forEach(ch=>{
     const t=Object.assign({id:ch.doc.id}, ch.doc.data());
-    const chave=t.id+':'+t.status;
+    const chave=t.id+':'+t.status+':'+t.paraId+':'+ver(t).join(',')+':'+(t.andamentoEm||0);
     if(vistos.has(chave)) return; vistos.add(chave);
+    const papel=(t.paraId===me?'f':'')+(acompanho(t)?'v':''), antes=papeis[t.id]; papeis[t.id]=papel;
+    const novoPapel = antes===undefined || antes!==papel;
     if(primeiraCarga) return;
-    if(ch.type==='added' && t.paraId===me && t.deId!==me && t.status!=='feita') notificar('Nova tarefa de '+(nomeDe(t.deId)||t.deNome||''), t.texto, 'n'+t.id);
-    if(ch.type==='modified' && t.status==='feita' && t.deId===me && t.paraId!==me) notificar('Tarefa resolvida por '+(t.feitaPorNome||nomeDe(t.paraId)||''), t.texto, 'f'+t.id);
+    if(novoPapel && t.status==='pendente' && acompanho(t)) notificar('Para acompanhar: tarefa de '+(nomeDe(t.paraId)||t.paraNome||''), t.texto, 'v'+t.id);
+    if(novoPapel && t.paraId===me && t.deId!==me && t.status==='pendente') notificar('Nova tarefa de '+(nomeDe(t.deId)||t.deNome||''), t.texto, 'n'+t.id);
+    if(ch.type==='modified' && t.status==='pendente' && t.andamentoEm && t.andamentoPorId!==me && Date.now()-t.andamentoEm<120000 && (t.deId===me||t.paraId===me||acompanho(t))) notificar('Andamento: '+(t.texto.length>40?t.texto.slice(0,40)+'…':t.texto), t.andamento||'(sem texto)', 'a'+t.id);
+    if(ch.type==='modified' && t.status==='feita' && t.feitaPorId!==me && (t.deId===me||acompanho(t)) && t.paraId!==me) notificar('Tarefa resolvida por '+(t.feitaPorNome||nomeDe(t.paraId)||''), t.texto, 'f'+t.id);
   });
 }
 
