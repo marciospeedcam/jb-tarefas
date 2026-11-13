@@ -174,6 +174,15 @@ function meuNome(){ return nomeDe(me); }
 function ver(t){ return Array.isArray(t.verIds)? t.verIds : []; }
 function acompanho(t){ return ver(t).includes(me) && t.paraId!==me && t.deId!==me; }
 function nomesLista(ids){ const l=ids.map(i=>i===me?'você':nomeDe(i)).filter(Boolean); if(l.length<2) return l.join(''); return l.slice(0,-1).join(', ')+' e '+l[l.length-1]; }
+// O banco só aceita mudar tarefa para "feita"; para editar/andamento, quem criou recria a tarefa com os dados novos
+function salvarTarefa(t, upd){
+  const ref=db.doc('tarefas/'+t.id);
+  return ref.update(upd).catch(e=>{
+    if(t.deId!==me) throw e;
+    const novo={}; Object.keys(t).forEach(k=>{ if(k!=='id' && t[k]!==undefined) novo[k]=t[k]; }); Object.assign(novo, upd);
+    return db.collection('tarefas').add(novo).then(()=>ref.delete());
+  });
+}
 function campoPessoas(box, marcados){
   box.append(el('label',null,'Quem pode acompanhar? (só vê, não marca como feita)'));
   const div=el('div','pessoas');
@@ -361,7 +370,7 @@ function modalAndamento(t){
       const v=ta.value.trim();
       const upd={andamento:v, andamentoEm:Date.now(), andamentoPor:meuNome(), andamentoPorId:me};
       Object.assign(t, upd); fecharModal(); setStatus('Andamento salvo ✓');
-      db.doc('tarefas/'+t.id).update(upd).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
+      salvarTarefa(Object.assign({},t), upd).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
     };
     linha.append(c,ok); box.append(linha);
     setTimeout(()=>ta.focus(),50);
@@ -383,7 +392,7 @@ function modalEditar(t){
       if(!texto){ ta.focus(); return; } if(!para){ sel.focus(); return; }
       const upd={texto, paraId:para, paraNome:nomeDe(para), verIds:pegarVer().filter(i=>i!==para), editadoEm:Date.now()};
       Object.assign(t, upd); fecharModal(); setStatus('Tarefa salva ✓');
-      db.doc('tarefas/'+t.id).update(upd).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
+      salvarTarefa(Object.assign({},t), upd).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
     };
     linha.append(c,ok); box.append(linha);
   });
