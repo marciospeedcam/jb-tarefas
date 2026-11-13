@@ -370,7 +370,8 @@ function modalAndamento(t){
       const v=ta.value.trim();
       const upd={andamento:v, andamentoEm:Date.now(), andamentoPor:meuNome(), andamentoPorId:me};
       Object.assign(t, upd); fecharModal(); setStatus('Andamento salvo ✓');
-      salvarTarefa(Object.assign({},t), upd).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
+      // Andamento vai como uma nota separada (o banco não deixa alterar a tarefa)
+      db.collection('tarefas').add(Object.assign({tipo:'andamento', tarefaId:t.id, criadoEm:upd.andamentoEm, texto:'(andamento)', deId:me, deNome:meuNome(), status:'pendente'}, upd)).catch(e=>setStatus('Não deu para salvar ('+((e&&e.code)||'erro')+')', true));
     };
     linha.append(c,ok); box.append(linha);
     setTimeout(()=>ta.focus(),50);
@@ -508,7 +509,14 @@ function render(){
 // Avisa quando chega tarefa nova para mim ou quando resolvem uma que eu pedi
 function checarNovidades(docs){
   docs.forEach(ch=>{
-    const t=Object.assign({id:ch.doc.id}, ch.doc.data());
+    let t=Object.assign({id:ch.doc.id}, ch.doc.data());
+    if(t.tipo==='andamento'){
+      if(primeiraCarga || ch.type!=='added') return;
+      const alvo=tarefas.find(x=>x.id===t.tarefaId);
+      if(alvo && alvo.status==='pendente' && t.andamentoPorId!==me && (alvo.deId===me||alvo.paraId===me||acompanho(alvo))) notificar('Andamento: '+(alvo.texto.length>40?alvo.texto.slice(0,40)+'…':alvo.texto), t.andamento||'(sem texto)', 'a'+alvo.id);
+      return;
+    }
+    if(typeof t.texto!=='string') return;
     const chave=t.id+':'+t.status+':'+t.paraId+':'+ver(t).join(',')+':'+(t.andamentoEm||0);
     if(vistos.has(chave)) return; vistos.add(chave);
     const papel=(t.paraId===me?'f':'')+(acompanho(t)?'v':''), antes=papeis[t.id]; papeis[t.id]=papel;
@@ -517,7 +525,7 @@ function checarNovidades(docs){
     if(novoPapel && t.status==='pendente' && acompanho(t)) notificar('Para acompanhar: tarefa de '+(nomeDe(t.paraId)||t.paraNome||''), t.texto, 'v'+t.id);
     if(novoPapel && t.paraId===me && t.deId!==me && t.status==='pendente') notificar('Nova tarefa de '+(nomeDe(t.deId)||t.deNome||''), t.texto, 'n'+t.id);
     if(ch.type==='modified' && t.status==='pendente' && t.andamentoEm && t.andamentoPorId!==me && Date.now()-t.andamentoEm<120000 && (t.deId===me||t.paraId===me||acompanho(t))) notificar('Andamento: '+(t.texto.length>40?t.texto.slice(0,40)+'…':t.texto), t.andamento||'(sem texto)', 'a'+t.id);
-    if(ch.type==='modified' && t.status==='feita' && t.feitaPorId!==me && (t.deId===me||acompanho(t)) && t.paraId!==me) notificar('Tarefa resolvida por '+(t.feitaPorNome||nomeDe(t.paraId)||''), t.texto, 'f'+t.id);
+    if(ch.type==='modified' && t.status==='feita' && (t.feitaPorNome||'')!==meuNome() && (t.deId===me||acompanho(t)) && t.paraId!==me) notificar('Tarefa resolvida por '+(t.feitaPorNome||nomeDe(t.paraId)||''), t.texto, 'f'+t.id);
   });
 }
 
@@ -528,7 +536,9 @@ function iniciar(){
   db.doc('config/grupo').onSnapshot({includeMetadataChanges:true},s=>{ grupo=s.exists?s.data():null; if(!s.metadata.fromCache||grupo) loadedG=true; pronto(); render(); }, falha);
   db.collection('membros').onSnapshot({includeMetadataChanges:true},s=>{ membros=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(m=>typeof m.nome==='string'); if(!s.metadata.fromCache||membros.some(m=>m.id===me)) loadedM=true; pronto(); render(); }, falha);
   db.collection('tarefas').orderBy('criadoEm','desc').onSnapshot({includeMetadataChanges:true},s=>{
-    tarefas=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(t=>typeof t.texto==='string');
+    const todos=s.docs.map(d=>Object.assign({id:d.id},d.data()));
+    const notas={}; todos.forEach(n=>{ if(n.tipo==='andamento' && n.tarefaId && (!notas[n.tarefaId] || (n.andamentoEm||0)>(notas[n.tarefaId].andamentoEm||0))) notas[n.tarefaId]=n; });
+    tarefas=todos.filter(t=>typeof t.texto==='string' && !t.tipo).map(t=>{ const n=notas[t.id]; if(n && (n.andamentoEm||0)>(t.andamentoEm||0)) Object.assign(t,{andamento:n.andamento, andamentoEm:n.andamentoEm, andamentoPor:n.andamentoPor, andamentoPorId:n.andamentoPorId}); return t; });
     checarNovidades(s.docChanges());
     if(!s.metadata.fromCache){ loadedT=true; if(primeiraCarga){ primeiraCarga=false; } }
     pronto(); render(); lembrete24h();
