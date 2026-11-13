@@ -318,8 +318,11 @@ function modalResolver(t){
       ok.disabled=true;
       const upd={status:'feita', feitaEm:Date.now(), feitaPorNome:meuNome(), feitaPorId:me};
       if(ob.value.trim()) upd.obs=ob.value.trim();
-      try{ await db.doc('tarefas/'+t.id).update(upd); fecharModal(); setStatus('Tarefa resolvida ✓'); }
-      catch(e){ ok.disabled=false; setStatus('Não deu para salvar. Confira a internet.', true); }
+      const base={status:'feita', feitaEm:upd.feitaEm, feitaPorNome:upd.feitaPorNome}; if(upd.obs) base.obs=upd.obs;
+      Object.assign(t, base); fecharModal(); setStatus('Tarefa resolvida ✓');
+      const ref=db.doc('tarefas/'+t.id);
+      ref.update(upd).catch(e=>{ console.log('[JBT] resolver', e&&e.code); return ref.update(base); })
+        .catch(e=>setStatus('Não deu para concluir ('+((e&&e.code)||'erro')+')', true));
     };
     linha.append(c,ok); box.append(linha);
   });
